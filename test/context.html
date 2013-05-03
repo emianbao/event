@@ -24,10 +24,10 @@
 	});
 	object.triggerEvent("event");
 
-	object.setEventContext(1);
+	object.newEvent.setEventContext(1);
 	object.triggerEvent("event");
 
-	object.setEventContext(null);
+	object.newEvent.setEventContext(null);
 	object.triggerEvent("event");
 </script>
 </body>

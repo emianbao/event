@@ -29,11 +29,11 @@
 */
 
 // 检测事件数据存放包是否初始化
-function checkEventPackage(){
-	if(!this._eventPackage){
-		this._eventPackage = {
+function checkEventPackage(dataParent){
+	if(!dataParent.eventPackage){
+		dataParent.eventPackage = {
 			// 执行环境
-			context: this,
+			context: null,
 			// 事件
 			events: {},
 			// 事件句柄
@@ -59,7 +59,7 @@ function checkEventPackage(){
 // 触发事件（内部）
 // 返回执行结果数组
 function triggerEvent(eventName, argus){
-	var eventPackage = this._eventPackage,
+	var eventPackage = this.newEvent.eventPackage,
 		fns = eventPackage.events[eventName],
 		context = eventPackage.context,
 		results = [],
@@ -82,14 +82,6 @@ function triggerEvent(eventName, argus){
 }
 
 module.exports = {
-	// 事件数据存放包
-	_eventPackage: null,
-	// 设置事件执行环境
-	setEventContext: function(context){
-		checkEventPackage.call(this);
-		
-		this._eventPackage.context = context;
-	},
 	/**
 		新建事件
 		config:
@@ -99,21 +91,38 @@ module.exports = {
 			clear
 			stopOnFalse
 	*/
-	newEvent: function(eventName, config){
-		checkEventPackage.call(this);
+	newEvent: (function(){
+		var newEvent = function(eventName, config){
+			checkEventPackage(newEvent);
 
-		var eventPackage = this._eventPackage,
-			flags = eventPackage.flags;
-		for(var flag in config){
-			flags[flag][eventName] = true;
-		}
-		if(config["once"]){
-			eventPackage.onceRun[eventName] = true;
-		}
-		if(config["memoryLast"] || config["memory"]){
-			eventPackage.memoryCache[eventName] = [];
-		}
-	},
+			var eventPackage = newEvent.eventPackage,
+				flags = eventPackage.flags;
+			// 默认执行环境为当前对象
+			eventPackage.context = this;
+
+			for(var flag in config){
+				flags[flag][eventName] = true;
+			}
+			if(config["once"]){
+				eventPackage.onceRun[eventName] = true;
+			}
+			if(config["memoryLast"] || config["memory"]){
+				eventPackage.memoryCache[eventName] = [];
+			}
+		};
+
+		// 事件数据存放包
+		newEvent.eventPackage = null;
+
+		// 设置事件执行环境
+		newEvent.setEventContext = function(context){
+			checkEventPackage(newEvent);
+			
+			this.eventPackage.context = context;
+		};
+
+		return newEvent;
+	})(),
 	/** 添加事件
 		eventName  事件名
 		fn  事件处理函数
@@ -122,7 +131,7 @@ module.exports = {
 	addEvent: function(eventName, fn, level){
 		fn.level = level || 0;
 
-		var eventPackage = this._eventPackage,
+		var eventPackage = this.newEvent.eventPackage,
 			events = eventPackage.events,
 			flags = eventPackage.flags,
 			context = eventPackage.context;
@@ -148,7 +157,7 @@ module.exports = {
 	*/
 	addEventAsync: function(eventName, fn, onlyLast, level){
 		// 异步事件处理程序
-		var cache = this._eventPackage.cache,
+		var cache = this.newEvent.eventPackage.cache,
 			handler;
 
 		return handler = this.addEvent(eventName, function(){
@@ -192,7 +201,7 @@ module.exports = {
 	*/
 	removeEvent: function(){
 		var eventPackage;
-        if (!(eventPackage = this._eventPackage))
+        if (!(eventPackage = this.newEvent.eventPackage))
             return false;
 
         var events = eventPackage.events,
@@ -248,7 +257,7 @@ module.exports = {
 	triggerEvent: function(eventName){
 		var argus = Array.prototype.slice.call(arguments, 1),
 			run = true,
-			eventPackage = this._eventPackage,
+			eventPackage = this.newEvent.eventPackage,
 			flags = eventPackage.flags;
 
 		if(flags["once"][eventName]){
