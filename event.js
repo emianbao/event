@@ -201,56 +201,56 @@ module.exports = {
 	*/
 	removeEvent: function(){
 		var eventPackage;
-        if (!(eventPackage = this.newEvent.eventPackage))
-            return false;
-
-        var events = eventPackage.events,
-        	cache = eventPackage.cache,
-        	argus0 = arguments[0],
-        	argus0type = typeof argus0,
-        	argus1 = arguments[1],
-        	argus1type = typeof argus1;
-
-        var i, l, key, fns;
-        // 通过事件绑定句柄移除事件
-        if (argus0type === "number") {
-            if(cache[argus0]){
-            	arguments.callee.apply(this, cache[argus0]);
-            }
-        }
-        // 通过事件名和处理函数移除事件
-        else if (argus0type === "string" && argus1type === "function") {
-            fns = events[argus0];
-            for(i = 0, l = fns.length; i < l; i ++){
-            	if(argus1 === fns[i]){
-            		fns.splice(i, 1);
-            		break;
-            	}
-            }
-            // 移除句柄缓存
-            for(key in cache){
-            	if(argus0 === cache[key][0] && argus1 === cache[key][1]){
-            		delete cache[key];
-            		break;
-            	}
-            }
-        }
-        // 移除事件名等于eventName的所有事件
-        else if (argus0type === "string" && argus1type === "undefined") {
-            events[argus0] = [];
-            // 移除句柄缓存
-            for(key in cache){
-            	if(argus0 === cache[key][0]){
-            		delete cache[key];
-            	}
-            }
-        }
-        // 移除所有事件
-        else if (argus0type === "undefined") {
-            eventPackage.events = {};
-            // 移除句柄缓存
-            eventPackage.cache = {};
-        }
+	        if (!(eventPackage = this.newEvent.eventPackage))
+	            return false;
+	
+	        var events = eventPackage.events,
+	        	cache = eventPackage.cache,
+	        	argus0 = arguments[0],
+	        	argus0type = typeof argus0,
+	        	argus1 = arguments[1],
+	        	argus1type = typeof argus1;
+	
+	        var i, l, key, fns;
+	        // 通过事件绑定句柄移除事件
+	        if (argus0type === "number") {
+	            if(cache[argus0]){
+	            	arguments.callee.apply(this, cache[argus0]);
+	            }
+	        }
+	        // 通过事件名和处理函数移除事件
+	        else if (argus0type === "string" && argus1type === "function") {
+	            fns = events[argus0];
+	            for(i = 0, l = fns.length; i < l; i ++){
+	            	if(argus1 === fns[i]){
+	            		fns.splice(i, 1);
+	            		break;
+	            	}
+	            }
+	            // 移除句柄缓存
+	            for(key in cache){
+	            	if(argus0 === cache[key][0] && argus1 === cache[key][1]){
+	            		delete cache[key];
+	            		break;
+	            	}
+	            }
+	        }
+	        // 移除事件名等于eventName的所有事件
+	        else if (argus0type === "string" && argus1type === "undefined") {
+	            events[argus0] = [];
+	            // 移除句柄缓存
+	            for(key in cache){
+	            	if(argus0 === cache[key][0]){
+	            		delete cache[key];
+	            	}
+	            }
+	        }
+	        // 移除所有事件
+	        else if (argus0type === "undefined") {
+	            eventPackage.events = {};
+	            // 移除句柄缓存
+	            eventPackage.cache = {};
+	        }
 	},
 	// 触发事件
 	// 返回执行结果数组
