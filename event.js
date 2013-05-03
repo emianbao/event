@@ -56,6 +56,31 @@ function checkEventPackage(){
 	}
 }
 
+// 触发事件（内部）
+// 返回执行结果数组
+function triggerEvent(eventName, argus){
+	var eventPackage = this._eventPackage,
+		fns = eventPackage.events[eventName],
+		context = eventPackage.context,
+		results = [],
+		i, l;
+	if(fns){
+		if(eventPackage.flags["stopOnFalse"][eventName]){
+			for(i = 0, l = fns.length; i < l; i ++){
+				// 遇到返回值为false的，停止执行后续处理
+				if((results[i] = fns[i].apply(context, argus)) === false){
+					break;
+				}
+			}
+		}else{
+			for(i = 0, l = fns.length; i < l; i ++){
+				results[i] = fns[i].apply(context, argus);
+			}
+		}
+	}
+	return results;
+}
+
 module.exports = {
 	// 事件数据存放包
 	_eventPackage: null,
@@ -115,8 +140,7 @@ module.exports = {
 			}
 		}
 
-		eventPackage.cacheKey ++;
-		eventPackage.cache[eventPackage.cacheKey] = [eventName, fn];
+		eventPackage.cache[++ eventPackage.cacheKey] = [eventName, fn];
 		return eventPackage.cacheKey;
 	},
 	/** 添加异步事件
@@ -219,30 +243,6 @@ module.exports = {
             eventPackage.cache = {};
         }
 	},
-	// 触发事件（内部）
-	// 返回执行结果数组
-	_triggerEvent: function(eventName, argus){
-		var eventPackage = this._eventPackage,
-			fns = eventPackage.events[eventName],
-			context = eventPackage.context,
-			results = [],
-			i, l;
-		if(fns){
-			if(eventPackage.flags["stopOnFalse"][eventName]){
-				for(i = 0, l = fns.length; i < l; i ++){
-					// 遇到返回值为false的，停止执行后续处理
-					if((results[i] = fns[i].apply(context, argus)) === false){
-						break;
-					}
-				}
-			}else{
-				for(i = 0, l = fns.length; i < l; i ++){
-					results[i] = fns[i].apply(context, argus);
-				}
-			}
-		}
-		return results;
-	},
 	// 触发事件
 	// 返回执行结果数组
 	triggerEvent: function(eventName){
@@ -271,7 +271,7 @@ module.exports = {
 
 		var result = [];
 		if(run){
-			result = this._triggerEvent(eventName, argus);
+			result = triggerEvent.call(this, eventName, argus);
 		}
 
 
