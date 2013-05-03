@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>自定义事件测试 - memroyLast</title>
+</head>
+<body>
+<script type="text/javascript">
+	var module = {};
+</script>
+<script type="text/javascript" src="../event.js" charset="utf-8"></script>
+<script type="text/javascript">
+	var Event = module.exports;
+
+	function Object(){}
+	Object.prototype = Event;
+
+	var object = new Object();
+
+	object.newEvent("event", {});
+
+	object.addEvent("event", function(a, b){
+		console.log("fn1: level = ");
+	});
+	object.addEvent("event", function(a, b){
+		console.log("fn2: level = " + 1);
+	}, 1);
+	object.addEvent("event", function(a, b){
+		console.log("fn3: level = " + -1);
+	}, -1);
+	object.addEvent("event", function(a, b){
+		console.log("fn4: level = " + 5);
+	}, 5);
+
+	object.triggerEvent("event", 7, 8);
+</script>
+</body>
+</html>
