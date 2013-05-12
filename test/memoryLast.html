@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <meta charset="utf-8" />
     <title>自定义事件测试 - memroyLast</title>
 </head>
 <body>
@@ -17,9 +17,7 @@
 
 	var object = new Object();
 
-	object.newEvent("event", {
-		memoryLast: true
-	});
+	object.newEvent("event", "memoryLast");
 
 	object.triggerEvent("event", 1, 2);
 	object.triggerEvent("event", 3, 4);

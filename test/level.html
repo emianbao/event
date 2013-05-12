@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <title>自定义事件测试 - memroyLast</title>
+    <meta charset="utf-8" />
+    <title>自定义事件测试 - sort</title>
 </head>
 <body>
 <script type="text/javascript">
@@ -17,22 +17,41 @@
 
 	var object = new Object();
 
-	object.newEvent("event", {});
+	object.newEvent("event1", "sort");
 
-	object.addEvent("event", function(a, b){
-		console.log("fn1: level = ");
+	object.addEvent("event1", function(){
+		console.log("event1: fn1 -> level = " + arguments.callee.level);
 	});
-	object.addEvent("event", function(a, b){
-		console.log("fn2: level = " + 1);
+	object.addEvent("event1", function(){
+		console.log("event1: fn2 -> level = " + arguments.callee.level);
 	}, 1);
-	object.addEvent("event", function(a, b){
-		console.log("fn3: level = " + -1);
+	object.addEvent("event1", function(){
+		console.log("event1: fn3 -> level = " + arguments.callee.level);
 	}, -1);
-	object.addEvent("event", function(a, b){
-		console.log("fn4: level = " + 5);
+	object.addEvent("event1", function(){
+		console.log("event1: fn4 -> level = " + arguments.callee.level);
 	}, 5);
 
-	object.triggerEvent("event", 7, 8);
+	object.triggerEvent("event1");
+
+
+
+	object.newEvent("event2");
+
+	object.addEvent("event2", function(){
+		console.log("event2: fn1 -> level = " + arguments.callee.level);
+	});
+	object.addEvent("event2", function(){
+		console.log("event2: fn2 -> level = " + arguments.callee.level);
+	}, 1);
+	object.addEvent("event2", function(){
+		console.log("event2: fn3 -> level = " + arguments.callee.level);
+	}, -1);
+	object.addEvent("event2", function(){
+		console.log("event2: fn4 -> level = " + arguments.callee.level);
+	}, 5);
+
+	object.triggerEvent("event2");
 </script>
 </body>
 </html>

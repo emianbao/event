@@ -28,26 +28,41 @@
 		场景：DOM事件绑定
 */
 
+var flagsCache = {};
+
+/*
+	flags:
+		memory
+		memoryLast
+		once
+		clear
+		stopOnFalse
+		sort
+*/
+function createFlags(flags) {
+    var object = flagsCache[flags] = {},
+        i, l;
+    flags = flags.split(/\s+/);
+    for (i = 0, l = flags.length; i < l; i++) {
+        object[flags[i]] = true;
+    }
+    return object;
+}
+
 // 检测事件数据存放包是否初始化
-function checkEventPackage(dataParent){
-	if(!dataParent.eventPackage){
-		dataParent.eventPackage = {
+function checkEventPackage(){
+	if(!this.eventPackage){
+		this.eventPackage = {
 			// 执行环境
-			context: null,
+			context: this,
 			// 事件
 			events: {},
 			// 事件句柄
-			cacheKey: 0,
+			handler: 0,
 			// 事件句柄缓存
-			cache: {},
+			handlerCache: {},
 			// 事件特性
-			flags: {
-				memory: {},
-				memoryLast: {},
-				once: {},
-				clear: {},
-				stopOnFalse: {}
-			},
+			flags: {},
 			// 单次执行事件执行状态
 			onceRun: {},
 			// 记忆事件执行记录
@@ -56,16 +71,22 @@ function checkEventPackage(dataParent){
 	}
 }
 
+function sort(list){
+	list.sort(function(fn1, fn2){
+		return fn2.level - fn1.level;
+	});
+}
+
 // 触发事件（内部）
 // 返回执行结果数组
 function triggerEvent(eventName, argus){
-	var eventPackage = this.newEvent.eventPackage,
+	var eventPackage = this.eventPackage,
 		fns = eventPackage.events[eventName],
 		context = eventPackage.context,
 		results = [],
 		i, l;
 	if(fns){
-		if(eventPackage.flags["stopOnFalse"][eventName]){
+		if(eventPackage.flags[eventName]["stopOnFalse"]){
 			for(i = 0, l = fns.length; i < l; i ++){
 				// 遇到返回值为false的，停止执行后续处理
 				if((results[i] = fns[i].apply(context, argus)) === false){
@@ -82,47 +103,30 @@ function triggerEvent(eventName, argus){
 }
 
 module.exports = {
+	// 设置事件处理环境
+	setEventContext: function(context){
+		checkEventPackage.call(this);
+		
+		this.eventPackage.context = context;
+	},
 	/**
 		新建事件
-		config:
-			memory
-			memoryLast
-			once
-			clear
-			stopOnFalse
 	*/
-	newEvent: (function(){
-		var newEvent = function(eventName, config){
-			checkEventPackage(newEvent);
+	newEvent: function(eventName, flags){
+		checkEventPackage.call(this);
 
-			var eventPackage = newEvent.eventPackage,
-				flags = eventPackage.flags;
-			// 默认执行环境为当前对象
-			eventPackage.context = this;
-
-			for(var flag in config){
-				flags[flag][eventName] = true;
-			}
-			if(config["once"]){
-				eventPackage.onceRun[eventName] = true;
-			}
-			if(config["memoryLast"] || config["memory"]){
-				eventPackage.memoryCache[eventName] = [];
-			}
-		};
-
-		// 事件数据存放包
-		newEvent.eventPackage = null;
-
-		// 设置事件执行环境
-		newEvent.setEventContext = function(context){
-			checkEventPackage(newEvent);
-			
-			this.eventPackage.context = context;
-		};
-
-		return newEvent;
-	})(),
+		var eventPackage = this.eventPackage;
+		// 设置事件特性
+		eventPackage.flags[eventName] = flags = flags ? (flagsCache[flags] || createFlags(flags)) : {};
+		// 初始化单次执行状态
+		if(flags["once"]){
+			eventPackage.onceRun[eventName] = true;
+		}
+		// 初始化记忆缓存
+		if(flags["memoryLast"] || flags["memory"]){
+			eventPackage.memoryCache[eventName] = [];
+		}
+	},
 	/** 添加事件
 		eventName  事件名
 		fn  事件处理函数
@@ -131,17 +135,18 @@ module.exports = {
 	addEvent: function(eventName, fn, level){
 		fn.level = level || 0;
 
-		var eventPackage = this.newEvent.eventPackage,
+		var eventPackage = this.eventPackage,
 			events = eventPackage.events,
-			flags = eventPackage.flags,
+			flags = eventPackage.flags[eventName],
 			context = eventPackage.context;
 
 		(events[eventName] || (events[eventName] = [])).push(fn);
-		events[eventName].sort(function(fn1, fn2){
-			return fn2.level - fn1.level;
-		});
+		if(flags["sort"]){
+			fn.level = level || 0;
+			sort(events[eventName]);
+		}
 
-		if(flags["memoryLast"][eventName] || flags["memory"][eventName]){
+		if(flags["memoryLast"] || flags["memory"]){
 			var memoryCache = eventPackage.memoryCache[eventName];
 
 			for(var i = 0, l = memoryCache.length; i < l; i ++){
@@ -149,21 +154,21 @@ module.exports = {
 			}
 		}
 
-		eventPackage.cache[++ eventPackage.cacheKey] = [eventName, fn];
-		return eventPackage.cacheKey;
+		eventPackage.handlerCache[++ eventPackage.handler] = [eventName, fn];
+		return eventPackage.handler;
 	},
 	/** 添加异步事件
 		onlyLast 异步处理函数执行时，只执行之前最后一次事件触发
 	*/
 	addEventAsync: function(eventName, fn, onlyLast, level){
 		// 异步事件处理程序
-		var cache = this.newEvent.eventPackage.cache,
+		var cache = this.eventPackage.handlerCache,
 			handler;
 
 		return handler = this.addEvent(eventName, function(){
 			var cacheHandler = cache[handler];
-			if(onlyLast && cacheHandler[2]){
-				clearTimeout(cacheHandler[2]);
+			if(onlyLast && cacheHandler.asyncHandler){
+				clearTimeout(cacheHandler.asyncHandler);
 			}
 			var argus = arguments,
 				_this = this,
@@ -186,8 +191,8 @@ module.exports = {
 						delete this.list;
 					}
 				};
-			cacheHandler[2] = setTimeout(function(){
-				cacheHandler[2] = null;
+			cacheHandler.asyncHandler = setTimeout(function(){
+				delete cacheHandler.asyncHandler;
 				result.set(fn.apply(_this, argus));
 			}, 1);
 			return result;
@@ -201,79 +206,90 @@ module.exports = {
 	*/
 	removeEvent: function(){
 		var eventPackage;
-	        if (!(eventPackage = this.newEvent.eventPackage))
-	            return false;
-	
-	        var events = eventPackage.events,
-	        	cache = eventPackage.cache,
-	        	argus0 = arguments[0],
-	        	argus0type = typeof argus0,
-	        	argus1 = arguments[1],
-	        	argus1type = typeof argus1;
-	
-	        var i, l, key, fns;
-	        // 通过事件绑定句柄移除事件
-	        if (argus0type === "number") {
-	            if(cache[argus0]){
-	            	arguments.callee.apply(this, cache[argus0]);
-	            }
-	        }
-	        // 通过事件名和处理函数移除事件
-	        else if (argus0type === "string" && argus1type === "function") {
-	            fns = events[argus0];
-	            for(i = 0, l = fns.length; i < l; i ++){
-	            	if(argus1 === fns[i]){
-	            		fns.splice(i, 1);
-	            		break;
-	            	}
-	            }
-	            // 移除句柄缓存
-	            for(key in cache){
-	            	if(argus0 === cache[key][0] && argus1 === cache[key][1]){
-	            		delete cache[key];
-	            		break;
-	            	}
-	            }
-	        }
-	        // 移除事件名等于eventName的所有事件
-	        else if (argus0type === "string" && argus1type === "undefined") {
-	            events[argus0] = [];
-	            // 移除句柄缓存
-	            for(key in cache){
-	            	if(argus0 === cache[key][0]){
-	            		delete cache[key];
-	            	}
-	            }
-	        }
-	        // 移除所有事件
-	        else if (argus0type === "undefined") {
-	            eventPackage.events = {};
-	            // 移除句柄缓存
-	            eventPackage.cache = {};
-	        }
+		
+        if (!(eventPackage = this.eventPackage)){
+        	return false;
+        }
+
+        var events = eventPackage.events,
+        	cache = eventPackage.handlerCache,
+        	argus0 = arguments[0],
+        	argus0type = typeof argus0,
+        	argus1 = arguments[1],
+        	argus1type = typeof argus1;
+
+        var i, l, key, fns;
+        // 通过事件绑定句柄移除事件
+        if (argus0type === "number") {
+            if(cache[argus0]){
+            	arguments.callee.apply(this, cache[argus0]);
+            }
+        }
+        // 通过事件名和处理函数移除事件
+        else if (argus0type === "string" && argus1type === "function") {
+            fns = events[argus0];
+            for(i = 0, l = fns.length; i < l; i ++){
+            	if(argus1 === fns[i]){
+            		fns.splice(i, 1);
+            		break;
+            	}
+            }
+            // 移除句柄缓存
+            for(key in cache){
+            	if(argus0 === cache[key][0] && argus1 === cache[key][1]){
+            		delete cache[key];
+            		break;
+            	}
+            }
+        }
+        // 移除事件名等于eventName的所有事件
+        else if (argus0type === "string" && argus1type === "undefined") {
+            events[argus0] = [];
+            // 移除句柄缓存
+            for(key in cache){
+            	if(argus0 === cache[key][0]){
+            		delete cache[key];
+            	}
+            }
+            // 移除触发记录（由于移除整个事件情况比较少，事件状态占用内存比较少，所以其他事件状态不做移除，只移除内存占用较多的触发记录）
+            var flags = eventPackage.flags[argus0];
+            if(flags["memory"] || flags["memoryLast"]){
+            	delete eventPackage.memoryCache[argus0];
+            }
+        }
+        // 移除所有事件
+        else if (argus0type === "undefined") {
+            eventPackage.events = {};
+            // 移除句柄缓存
+            eventPackage.cache = {};
+            // 移除事件特性
+            //eventPackage.flags = {};
+            // 移除触发记录
+            //eventPackage.memoryCache = {};
+        }
 	},
 	// 触发事件
 	// 返回执行结果数组
 	triggerEvent: function(eventName){
 		var argus = Array.prototype.slice.call(arguments, 1),
 			run = true,
-			eventPackage = this.newEvent.eventPackage,
-			flags = eventPackage.flags;
+			eventPackage = this.eventPackage,
+			flags = eventPackage.flags[eventName];
 
-		if(flags["once"][eventName]){
+		if(flags["once"]){
 			if(eventPackage.onceRun[eventName]){
 				delete eventPackage.onceRun[eventName];
 			
-				if(flags["memoryLast"][eventName] || flags["memory"][eventName]){
+				if(flags["memoryLast"] || flags["memory"]){
 					eventPackage.memoryCache[eventName] = [argus];
 				}
 			}else{
 				run = false;
 			}
 		}else{
-			if(flags["memoryLast"][eventName]){
+			if(flags["memoryLast"]){
 				eventPackage.memoryCache[eventName] = [argus];
-			}else if(flags["memory"][eventName]){
+			}else if(flags["memory"]){
 				eventPackage.memoryCache[eventName].push(argus);
 			}
 		}
@@ -284,7 +300,7 @@ module.exports = {
 		}
 
 
-		if(flags["clear"][eventName]){
+		if(flags["clear"]){
 			this.removeEvent(eventName);
 		}
 
